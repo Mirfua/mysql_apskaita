@@ -4,11 +4,13 @@
   <tr>
     <th>Tipas</th>
     <th>Suma</th>
+    <th>Kiek</th>
   </tr>
   {{#each ataskaita}}
   <tr>
     <td>{{pavadinimas}}</td>
-    <td>{{suma}}</td>
+    <td>{{nullTo0 suma}}</td>
+    <td>{{nullTo0 kiek}}</td>
   </tr>
   {{/each}}
 </table>

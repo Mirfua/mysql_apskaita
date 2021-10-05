@@ -35,6 +35,39 @@ function query(conn, sql, values) {
   });
 }
 
+function start(conn) {
+  return new Promise((resolve, reject) => {
+    conn.beginTransaction((err) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+}
+
+function commit(conn) {
+  return new Promise((resolve, reject) => {
+    conn.commit((err) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+}
+
+function rollback(conn) {
+  return new Promise((resolve, reject) => {
+    conn.rollback((err) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+}
+
 function end(conn) {
   return new Promise((resolve, reject) => {
     if (conn) {
@@ -44,4 +77,4 @@ function end(conn) {
   });
 }
 
-export { connect, end, query };
+export { connect, start, commit, rollback, end, query };

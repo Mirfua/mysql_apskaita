@@ -1,6 +1,6 @@
 import express from "express";
 import exphbs from "express-handlebars";
-import { connect, end, query } from "./db.js";
+import { connect, end, query, start, commit, rollback } from "./db.js";
 
 const PORT = 3000;
 const WEB = "web";
@@ -26,6 +26,12 @@ app.engine(
       eq: (param1, param2) => {
         return param1 === param2;
       },
+      nullTo0: (num) => {
+        if (num === undefined || num === null) {
+          return "0";
+        }
+        return num;
+      },
     },
   }),
 );
@@ -34,6 +40,7 @@ app.set("view engine", "handlebars");
 app.use(express.static(WEB, {
   index: ["index.html"],
 }));
+app.use(express.json());
 app.use(express.urlencoded({
   extended: true,
 }));
@@ -571,18 +578,57 @@ app.use("/report/tipai", async (req, res) => {
     const { results: ataskaita } = await query(
       conn,
       `
-      select tipai.id, tipai.pavadinimas, sum(kiekis * kaina) as suma
-      from
-        prekes join cekiai on prekes.cekiai_id = cekiai.id
-        right join tipai on prekes.tipai_id = tipai.id
-      where cekiai.data >= ? and cekiai.data <= ? or cekiai.data is null
-      group by tipai.id, tipai.pavadinimas
-      order by tipai.pavadinimas`,
+select *
+from 
+	(select t.id, t.pavadinimas, sum(kiekis * kaina) as suma, count(*) as kiek
+		from
+			prekes join cekiai on prekes.cekiai_id = cekiai.id
+			join tipai t on prekes.tipai_id = t.id
+		where cekiai.data >= '2020-11-02' and cekiai.data <= '2020-12-31'
+		group by t.id, t.pavadinimas) prekes_su_tipais
+	right join tipai t_visi on t_visi.id = prekes_su_tipais.id
+order by t_visi.pavadinimas
+`,
       [nuo, iki],
     );
     res.render("report/tipai", { ataskaita, nuo, iki });
   } catch (err) {
     res.render("klaida", { err });
+  } finally {
+    await end(conn);
+  }
+});
+
+app.post("/json/cekis", async (req, res) => {
+  let conn;
+  try {
+    conn = await connect();
+    await start(conn);
+    let {results} = await query(
+      conn,
+      "insert into cekiai (data, parduotuve) values (?, ?);",
+      [new Date(), req.body.parduotuve],
+    );
+    for (const preke of req.body.prekes) {
+      await query(
+        conn,
+        "insert into prekes (cekiai_id, preke, kiekis, kaina, tipai_id) values (?, ?, ?, ?, ?);",
+        [results.insertId, preke.preke, preke.kiekis, preke.kaina, preke.tipaiId],
+      );
+    }
+    await commit(conn);
+    res.set("Content-Type", "application/json");
+    res.send(JSON.stringify({
+      id: results.insertId
+    }));
+  } catch (err) {
+    console.log("Klaida", err);
+    await rollback(conn);
+    res.set("Content-Type", "application/json");
+    res.send(JSON.stringify({
+      id: null,
+      err
+    }));
   } finally {
     await end(conn);
   }
