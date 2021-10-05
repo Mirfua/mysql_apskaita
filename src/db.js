@@ -16,7 +16,26 @@ function connect() {
       if (err) {
         return reject(err);
       }
-      resolve(conn);
+      // SET autocommit = {0 | 1}
+      query(conn, "set autocommit = 0")
+        .then(() => {
+          /*
+            READ UNCOMMITTED
+            READ COMMITTED
+            REPEATABLE READ
+            SERIALIZABLE
+          */
+          return query(
+            conn,
+            "set session transaction isolation level read uncommitted",
+          );
+        })
+        .then(() => {
+          resolve(conn);
+        })
+        .catch((err) => {
+          reject(err);
+        });
     });
   });
 }
@@ -77,4 +96,4 @@ function end(conn) {
   });
 }
 
-export { connect, start, commit, rollback, end, query };
+export { commit, connect, end, query, rollback, start };

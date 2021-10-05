@@ -1,20 +1,20 @@
 {
-  "parduotuve": "test_ok1",
+  "parduotuve": "test_ok2",
   "prekes": [
     {
-      "preke": "ok1",
+      "preke": "ok21",
       "kiekis": 1,
       "kaina": 1,
       "tipaiId": 4
     },
     {
-      "preke": "ok2",
+      "preke": "ok22",
       "kiekis": 2,
       "kaina": 2,
       "tipaiId": 5
     },
     {
-      "preke": "ok3",
+      "preke": "ok23",
       "kiekis": 3,
       "kaina": 3,
       "tipaiId": 5

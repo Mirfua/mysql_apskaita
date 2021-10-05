@@ -1,6 +1,6 @@
 import express from "express";
 import exphbs from "express-handlebars";
-import { connect, end, query, start, commit, rollback } from "./db.js";
+import { commit, connect, end, query, rollback, start } from "./db.js";
 
 const PORT = 3000;
 const WEB = "web";
@@ -135,6 +135,7 @@ app.post("/cekis", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -143,7 +144,9 @@ app.post("/cekis", async (req, res) => {
           where id = ?`,
           [new Date(req.body.data), req.body.parduotuve, id],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida gaunant duomenis
         res.render("klaida", { err });
         return;
@@ -161,6 +164,7 @@ app.post("/cekis", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -168,7 +172,9 @@ app.post("/cekis", async (req, res) => {
           values (?, ?)`,
           [new Date(req.body.data), req.body.parduotuve],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida irasant duomenis
         res.render("klaida", { err });
         return;
@@ -186,6 +192,7 @@ app.get("/cekis/:id/del", async (req, res) => {
     let conn;
     try {
       conn = await connect();
+      await start(conn);
       await query(
         conn,
         `
@@ -193,7 +200,9 @@ app.get("/cekis/:id/del", async (req, res) => {
           where id = ?`,
         [id],
       );
+      await commit(conn);
     } catch (err) {
+      await rollback(conn);
       // ivyko klaida gaunant duomenis
       res.render("klaida", { err });
       return;
@@ -297,6 +306,7 @@ app.post("/preke", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -305,7 +315,9 @@ app.post("/preke", async (req, res) => {
           where id = ?`,
           [preke, kiekis, kaina, tipas, id],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida keiciant duomenis
         res.render("klaida", { err });
         return;
@@ -325,6 +337,7 @@ app.post("/preke", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -332,7 +345,9 @@ app.post("/preke", async (req, res) => {
           values (?, ?, ?, ?, ?)`,
           [cekisId, preke, kiekis, kaina, tipas],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida irasant duomenis
         res.render("klaida", { err });
         return;
@@ -358,6 +373,7 @@ app.get("/preke/:id/del", async (req, res) => {
     let conn;
     try {
       conn = await connect();
+      await start(conn);
       const { results: prekes } = await query(
         conn,
         `
@@ -377,7 +393,9 @@ app.get("/preke/:id/del", async (req, res) => {
           [id],
         );
       }
+      await commit(conn);
     } catch (err) {
+      await rollback(conn);
       // ivyko klaida gaunant duomenis
       res.render("klaida", { err });
       return;
@@ -467,6 +485,7 @@ app.post("/tipas", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -475,7 +494,9 @@ app.post("/tipas", async (req, res) => {
           where id = ?`,
           [req.body.pavadinimas, id],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida gaunant duomenis
         res.render("klaida", { err });
         return;
@@ -492,6 +513,7 @@ app.post("/tipas", async (req, res) => {
       let conn;
       try {
         conn = await connect();
+        await start(conn);
         await query(
           conn,
           `
@@ -499,7 +521,9 @@ app.post("/tipas", async (req, res) => {
           values (?)`,
           [req.body.pavadinimas],
         );
+        await commit(conn);
       } catch (err) {
+        await rollback(conn);
         // ivyko klaida irasant duomenis
         res.render("klaida", { err });
         return;
@@ -517,6 +541,7 @@ app.get("/tipas/:id/del", async (req, res) => {
     let conn;
     try {
       conn = await connect();
+      await start(conn);
       await query(
         conn,
         `
@@ -524,7 +549,9 @@ app.get("/tipas/:id/del", async (req, res) => {
           where id = ?`,
         [id],
       );
+      await commit(conn);
     } catch (err) {
+      await rollback(conn);
       // ivyko klaida gaunant duomenis
       res.render("klaida", { err });
       return;
@@ -604,7 +631,7 @@ app.post("/json/cekis", async (req, res) => {
   try {
     conn = await connect();
     await start(conn);
-    let {results} = await query(
+    let { results } = await query(
       conn,
       "insert into cekiai (data, parduotuve) values (?, ?);",
       [new Date(), req.body.parduotuve],
@@ -613,13 +640,19 @@ app.post("/json/cekis", async (req, res) => {
       await query(
         conn,
         "insert into prekes (cekiai_id, preke, kiekis, kaina, tipai_id) values (?, ?, ?, ?, ?);",
-        [results.insertId, preke.preke, preke.kiekis, preke.kaina, preke.tipaiId],
+        [
+          results.insertId,
+          preke.preke,
+          preke.kiekis,
+          preke.kaina,
+          preke.tipaiId,
+        ],
       );
     }
     await commit(conn);
     res.set("Content-Type", "application/json");
     res.send(JSON.stringify({
-      id: results.insertId
+      id: results.insertId,
     }));
   } catch (err) {
     console.log("Klaida", err);
@@ -627,7 +660,7 @@ app.post("/json/cekis", async (req, res) => {
     res.set("Content-Type", "application/json");
     res.send(JSON.stringify({
       id: null,
-      err
+      err,
     }));
   } finally {
     await end(conn);
